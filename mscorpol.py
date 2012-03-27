@@ -22,11 +22,9 @@ def correctMSforDipole(msfile):
   defaultVisConjOrder=True #Default order is conjugate(ANTENNA1)*ANTENNA2
   me=measures()
   mstab = pt.table(msfile,readonly=False,ack=True)
+  #Get number of antennas
+  NrOfAnts=msNrOfAnts(mstab)
   ta = pt.table(mstab.getkeyword('ANTENNA'),ack=False)
-  #NrOfAnts=ta.nrows()
-  NrOfAnts=0
-  for tant in mstab.iter('ANTENNA1'):
-      NrOfAnts=NrOfAnts+1 
   pos = ta.getcol('POSITION')
   tl = pt.table(mstab.getkeyword('LOFAR_ANTENNA_FIELD'),ack=False)
   tf = pt.table(mstab.getkeyword('FIELD'),ack=False)
@@ -36,17 +34,17 @@ def correctMSforDipole(msfile):
   #Get unique list of times
   antUniq=mstab.query('ANTENNA2 == 0')
   timevals = antUniq.getcol('TIME')
+  print timevals
   tt = quantity(timevals,'s')
   antUniq.close()
-  antNr=0
   for tant in mstab.iter('ANTENNA1'):
-      antID=int(tant.getcol('ANTENNA1')[0])
+      antNr=int(tant.getcol('ANTENNA1')[0])
       print "ANTENNA=",antNr,'/',NrOfAnts
-      x = quantity(pos[antID,0],'m');
-      y = quantity(pos[antID,1],'m')
-      z = quantity(pos[antID,2],'m')
+      x = quantity(pos[antNr,0],'m');
+      y = quantity(pos[antNr,1],'m')
+      z = quantity(pos[antNr,2],'m')
       stnPos = me.position('ITRF',x,y,z)
-      stnRot=tl.getcol('COORDINATE_AXES')[antID]
+      stnRot=tl.getcol('COORDINATE_AXES')[antNr]
       JI=getDipJones(tt,stnPos,stnRot,srcDirection,
                 doCirc=not(options.linear),doInvJ=True,doPolPrec=True,showJones=options.jones)
 
@@ -58,7 +56,7 @@ def correctMSforDipole(msfile):
             pass
          else:
             JI=np.conj(JI)
-         tant2=mstab.query('ANTENNA2 == %d' % antID)
+         tant2=mstab.query('ANTENNA2 == %d' % antNr)
          data=tant2.getcol('DATA')    
          dataCohXY=np.array([[data[:,:,0],data[:,:,1]],[data[:,:,2],data[:,:,3]]])
          dataCor=np.zeros(dataCohXY.shape,dtype=np.complex)
@@ -97,9 +95,17 @@ def correctMSforDipole(msfile):
           [dataCor[0,0,:,:],dataCor[0,1,:,:],dataCor[1,0,:,:],dataCor[1,1,:,:]],
                               (1,2,0))
          tant.putcol('DATA',dataCorOut)
-         antNr=antNr+1
 
   if not options.jones: updateMSmetadata(msfile)
+
+def msNrOfAnts(mainTab):
+  antslist=set([])
+  for ants in mainTab.iter("ANTENNA1"):
+      antslist.add(ants.getcell("ANTENNA1",0))
+  for ants in mainTab.iter("ANTENNA2"):
+      antslist.add(ants.getcell("ANTENNA2",0))
+  return len(antslist)
+
 
 def updateMSmetadata(msfile):
   #Update history to show that this script has modified original data
