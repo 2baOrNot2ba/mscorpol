@@ -16,57 +16,89 @@ from pyrap.quanta import quantity
 import pyrap.tables as pt
 from LOFARdipoleJones import getDipJones
 
-__version__="0.0"
+__version__="1.1"
 
 def correctMSforDipole(msfile):
+  defaultVisConjOrder=True #Default order is conjugate(ANTENNA1)*ANTENNA2
   me=measures()
   mstab = pt.table(msfile,readonly=False,ack=True)
   ta = pt.table(mstab.getkeyword('ANTENNA'),ack=False)
-  NrOfAnts=ta.nrows()
+  #NrOfAnts=ta.nrows()
+  NrOfAnts=0
+  for tant in mstab.iter('ANTENNA1'):
+      NrOfAnts=NrOfAnts+1 
   pos = ta.getcol('POSITION')
   tl = pt.table(mstab.getkeyword('LOFAR_ANTENNA_FIELD'),ack=False)
   tf = pt.table(mstab.getkeyword('FIELD'),ack=False)
   srcDir = np.squeeze(tf.getcol('PHASE_DIR'))
   RA = quantity(srcDir[0],'rad'); dec = quantity(srcDir[1],'rad')
   srcDirection = me.direction('J2000',RA,dec)
-  for baselinehalf in ['ANTENNA1', 'ANTENNA2']:
-    if baselinehalf == 'ANTENNA1':
-       dataMultIdx=0
-    else:
-       dataMultIdx=1
-    for tant in mstab.iter([baselinehalf]):
-      antNr=int(tant.getcol(baselinehalf)[0])
-      print baselinehalf,"=",antNr,'/',NrOfAnts
-      x = quantity(pos[antNr,0],'m');
-      y = quantity(pos[antNr,1],'m')
-      z = quantity(pos[antNr,2],'m')
+  #Get unique list of times
+  antUniq=mstab.query('ANTENNA2 == 0')
+  timevals = antUniq.getcol('TIME')
+  tt = quantity(timevals,'s')
+  antUniq.close()
+  antNr=0
+  for tant in mstab.iter('ANTENNA1'):
+      antID=int(tant.getcol('ANTENNA1')[0])
+      print "ANTENNA=",antNr,'/',NrOfAnts
+      x = quantity(pos[antID,0],'m');
+      y = quantity(pos[antID,1],'m')
+      z = quantity(pos[antID,2],'m')
       stnPos = me.position('ITRF',x,y,z)
-      timevals = tant.getcol('TIME')
-      tt = quantity(timevals,'s')
-      stnRot=tl.getcol('COORDINATE_AXES')[antNr]
+      stnRot=tl.getcol('COORDINATE_AXES')[antID]
       JI=getDipJones(tt,stnPos,stnRot,srcDirection,
-                     doCirc=not(options.linear),doInvJ=True,showJones=options.jones)
-      #Visibility data is such that 
-      #  DATA(ANTENNA1,ANTENNA2)=V(ANTENNA1)^* x V(ANTENNA2),
-      #where V() is the raw voltage of the corresponding antenna.
-      if baselinehalf == 'ANTENNA1':
-         JI=np.conj(JI)
+                doCirc=not(options.linear),doInvJ=True,doPolPrec=True,showJones=options.jones)
 
+      #JI=np.ones((len(timevals),2,2))
+      #Start processing DATA
       if not options.jones:
-         #Start processing DATA
+         #Apply this antennas Jones to DATA that matches value in ANTENNA2
+         if defaultVisConjOrder:
+            pass
+         else:
+            JI=np.conj(JI)
+         tant2=mstab.query('ANTENNA2 == %d' % antID)
+         data=tant2.getcol('DATA')    
+         dataCohXY=np.array([[data[:,:,0],data[:,:,1]],[data[:,:,2],data[:,:,3]]])
+         dataCor=np.zeros(dataCohXY.shape,dtype=np.complex)
+         #Multiply Inverse Jones with visibility data.
+         nrSampsPerAntTim=antNr+1
+         for JIt in range(JI.shape[0]):
+             for visTimInd in range(nrSampsPerAntTim):
+                dataCor[:,:,JIt*nrSampsPerAntTim+visTimInd,:]=np.transpose(
+                  np.tensordot(
+                    dataCohXY[:,:,JIt*nrSampsPerAntTim+visTimInd,:],JI[JIt,:,:],
+                  axes=[[1],[1]]),
+                  (0,2,1))
+         dataCorOut=np.transpose(
+          [dataCor[0,0,:,:],dataCor[0,1,:,:],dataCor[1,0,:,:],dataCor[1,1,:,:]],
+                              (1,2,0))
+         tant2.putcol('DATA',dataCorOut)
+         tant2.close()
+
+         #Apply this antennas Jones matrix to DATA for ANTENNA1
+         if defaultVisConjOrder:
+            JI=np.conj(JI)
+         else:
+            JI=np.conj(JI) #Note: Jones inv has been conjugated once already.
          data=tant.getcol('DATA')    
          dataCohXY=np.array([[data[:,:,0],data[:,:,1]],[data[:,:,2],data[:,:,3]]])
          dataCor=np.zeros(dataCohXY.shape,dtype=np.complex)
          #Multiply Inverse Jones with visibility data.
+         nrSampsPerAntTim=NrOfAnts-antNr
          for JIt in range(JI.shape[0]):
-             dataCor[:,:,JIt,:]=np.tensordot(JI[JIt,:,:],dataCohXY[:,:,JIt,:],
-                         axes=[[1],[dataMultIdx]])
+             for visTimInd in range(nrSampsPerAntTim):
+                dataCor[:,:,JIt*nrSampsPerAntTim+visTimInd,:]=np.tensordot(
+                    JI[JIt,:,:],dataCohXY[:,:,JIt*nrSampsPerAntTim+visTimInd,:],
+                         axes=[[1],[0]])
 
          dataCorOut=np.transpose(
           [dataCor[0,0,:,:],dataCor[0,1,:,:],dataCor[1,0,:,:],dataCor[1,1,:,:]],
                               (1,2,0))
-         #N.B. the output matrix is transposed incorrectly. (Fix it!)
          tant.putcol('DATA',dataCorOut)
+         antNr=antNr+1
+
   if not options.jones: updateMSmetadata(msfile)
 
 def updateMSmetadata(msfile):
