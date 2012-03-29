@@ -32,9 +32,11 @@ def correctMSforDipole(msfile):
   RA = quantity(srcDir[0],'rad'); dec = quantity(srcDir[1],'rad')
   srcDirection = me.direction('J2000',RA,dec)
   #Get unique list of times
-  antUniq=mstab.query('ANTENNA2 == 0')
+  firstAntID=mstab.getcell("ANTENNA2",0)
+  print firstAntID
+  antUniq=mstab.query('ANTENNA2 == %d' % firstAntID)
   timevals = antUniq.getcol('TIME')
-  print timevals
+  #print timevals
   tt = quantity(timevals,'s')
   antUniq.close()
   for tant in mstab.iter('ANTENNA1'):
