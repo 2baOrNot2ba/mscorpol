@@ -16,7 +16,7 @@ from pyrap.quanta import quantity
 import pyrap.tables as pt
 from LOFARdipoleJones import getDipJones
 
-__version__="1.1"
+__version__="1.2"
 
 def correctMSforDipole(msfile):
   defaultVisConjOrder=True #Default order is conjugate(ANTENNA1)*ANTENNA2
@@ -33,20 +33,20 @@ def correctMSforDipole(msfile):
   srcDirection = me.direction('J2000',RA,dec)
   #Get unique list of times
   firstAntID=mstab.getcell("ANTENNA2",0)
-  print firstAntID
   antUniq=mstab.query('ANTENNA2 == %d' % firstAntID)
   timevals = antUniq.getcol('TIME')
   #print timevals
   tt = quantity(timevals,'s')
   antUniq.close()
+  antNr=0
   for tant in mstab.iter('ANTENNA1'):
-      antNr=int(tant.getcol('ANTENNA1')[0])
+      antID=int(tant.getcol('ANTENNA1')[0])
       print "ANTENNA=",antNr,'/',NrOfAnts
-      x = quantity(pos[antNr,0],'m');
-      y = quantity(pos[antNr,1],'m')
-      z = quantity(pos[antNr,2],'m')
+      x = quantity(pos[antID,0],'m');
+      y = quantity(pos[antID,1],'m')
+      z = quantity(pos[antID,2],'m')
       stnPos = me.position('ITRF',x,y,z)
-      stnRot=tl.getcol('COORDINATE_AXES')[antNr]
+      stnRot=tl.getcol('COORDINATE_AXES')[antID]
       JI=getDipJones(tt,stnPos,stnRot,srcDirection,
                 doCirc=not(options.linear),doInvJ=True,doPolPrec=True,showJones=options.jones)
 
@@ -58,7 +58,7 @@ def correctMSforDipole(msfile):
             pass
          else:
             JI=np.conj(JI)
-         tant2=mstab.query('ANTENNA2 == %d' % antNr)
+         tant2=mstab.query('ANTENNA2 == %d' % antID)
          data=tant2.getcol('DATA')    
          dataCohXY=np.array([[data[:,:,0],data[:,:,1]],[data[:,:,2],data[:,:,3]]])
          dataCor=np.zeros(dataCohXY.shape,dtype=np.complex)
@@ -97,6 +97,7 @@ def correctMSforDipole(msfile):
           [dataCor[0,0,:,:],dataCor[0,1,:,:],dataCor[1,0,:,:],dataCor[1,1,:,:]],
                               (1,2,0))
          tant.putcol('DATA',dataCorOut)
+      antNr=antNr+1
 
   if not options.jones: updateMSmetadata(msfile)
 

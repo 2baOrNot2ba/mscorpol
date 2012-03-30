@@ -21,7 +21,7 @@ bisectRot = np.matrix([[-1/sqrt(2), -1/sqrt(2), 0],
 
 def getDipJones(obsTimes,stnPos,stnRot,srcDirection,
                 doInvJ=False,doPolPrec=True,doCirc=False,
-                showJones=False):
+                showJones=False,doNormalize=True):
 
    obsTimesArr=obsTimes.get_value(); obsTimeUnit=obsTimes.get_unit()
    if doInvJ==True:
@@ -70,9 +70,15 @@ def getDipJones(obsTimes,stnPos,stnRot,srcDirection,
        if showJones: 
           print JonesDipMat
        if doInvJ==True :
-          InvJonesDip[ti,:,:]=np.linalg.inv(JonesDipMat)
+          IJonesDipMat=np.linalg.inv(JonesDipMat)
+          if doNormalize:
+             #JonesDipMat=JonesDipMat/sqrt(abs(np.linalg.det(JonesDipMat)))
+             g=sqrt(np.matrix.trace(IJonesDipMat*IJonesDipMat.H)/2.0)
+             IJonesDipMat=IJonesDipMat/g
+          InvJonesDip[ti,:,:]=IJonesDipMat
        else:
           JonesDip[ti,:,:]=JonesDipMat
+   #plotSVJonesGnuplot(InvJonesDip)
    if doInvJ==True:
       return InvJonesDip
    else:
@@ -98,8 +104,8 @@ def getSkyPrecessionMat(me,srcDirection):
        delta=me.direction('J2000',
                    str(deltaJ2000ra)+'rad',str(deltaJ2000dec)+'rad')
        #Convert alpha & delta to directions in the current epoch
-       alphaTru=me.measure(alpha,'JTRUE')
-       deltaTru=me.measure(delta,'JTRUE')
+       alphaTru=me.measure(alpha,'JMEAN') #'JTRUE' isn't stable
+       deltaTru=me.measure(delta,'JMEAN')
        raA=alphaTru['m0']['value']
        decA=alphaTru['m1']['value']
        alphaTruvec=sph2crt(raA,decA)
@@ -146,8 +152,8 @@ def plotSVJonesGnuplot(Jn):
        s=np.linalg.svd(Jn[ti,:,:].squeeze(),compute_uv=False)
        c=s[0]/s[1]
        cc=np.linalg.cond(Jn[ti,:,:].squeeze())
-       print ti, -20*log10((c+1)/(c-1) )
-       #print ti, s[0]+s[1]
+       #print ti, -20*log10((c+1)/(c-1) )
+       print ti, s[0]+s[1]
 
 def testJonesByAntFld():
    lambda0=2.20 #2.1
