@@ -8,10 +8,11 @@ from pyrap.quanta import quantity
 import pyrap.tables as pt
 from parseAntennaField import parseAntennaField
 
-#Matrix transform from linear to circular basis (Hamaker1996b) for exp(i*w*t)
-lin2circ =1/sqrt(2)*np.matrix('1.0 1.0*1j; 1.0    -1.0*1j')
+pm=-1
+#Matrix transform from linear to circular basis (Hamaker1996b) for exp(pm*i*w*t)
+lin2circ =1/sqrt(2)*np.matrix([[1.,pm*1.*1j],[1., pm*-1.*1j]])
 #Inverse of previous
-lin2circH=1/sqrt(2)*np.matrix('1.0 1.0;   -1.0*1j +1.0*1j')
+lin2circH=lin2circ.H
 #Effective lengths of electric dipoles along nominal LOFAR XY directions
 LeffXY=np.matrix('1 0 0; 0 1 0')
 #The rotation matrix from station coordinates to antenna XY coordinates:   
@@ -21,7 +22,7 @@ bisectRot = np.matrix([[-1/sqrt(2), -1/sqrt(2), 0],
 
 def getDipJones(obsTimes,stnPos,stnRot,srcDirection,
                 doInvJ=False,doPolPrec=True,doCirc=False,
-                showJones=False,doNormalize=True):
+                showJones=False,doNormalize=False):
 
    obsTimesArr=obsTimes.get_value(); obsTimeUnit=obsTimes.get_unit()
    if doInvJ==True:
@@ -40,8 +41,11 @@ def getDipJones(obsTimes,stnPos,stnRot,srcDirection,
    for ti in range(len(obsTimesArr)):
        #Set current time in reference frame 
        me.doframe(me.epoch('UTC',quantity(obsTimesArr[ti],obsTimeUnit)))
+       #print quantity(obsTimesArr[ti],obsTimeUnit)
        #Convert phase ref dir to current polar ITRF
        ITRFdirang=me.measure(srcDirection,'ITRF')
+       #azel=me.measure(srcDirection,'AZEL')
+       #print "EL",azel['m1']['value']/pi*180
        #Convert polar ITRF to cartesian ITRF
        raITRF=ITRFdirang['m0']['value']
        decITRF=ITRFdirang['m1']['value']
@@ -54,9 +58,28 @@ def getDipJones(obsTimes,stnPos,stnRot,srcDirection,
        polz2cart =1.0/sqrt(l*l+m*m)* np.matrix([
                           [ m, l*n],
                           [-l, m*n],
-                          [ .0, l*l+m*m]])
+                          [ .0, -(l*l+m*m)]])
+       #Alternatively:
+       #N_ITRF=me.measure(
+       #           me.direction('J2000',
+       #               str(srcDirection['m0']['value'])+'rad', 
+       #               str(srcDirection['m1']['value']+math.pi/2.0)+'rad') 
+       #       ,'ITRF')
+       #E_ITRF=me.measure(
+       #           me.direction('J2000',
+       #               str(srcDirection['m0']['value']+math.pi/2.0)+'rad', 
+       #               str(0.0)+'rad') 
+       #       ,'ITRF')
+       #north= sph2crt(N_ITRF['m0']['value'],N_ITRF['m1']['value'])
+       #east= sph2crt(E_ITRF['m0']['value'],E_ITRF['m1']['value'])
+       #print "N*E", north*east.T
+       #local_pointing= (stnRot* lmnITRF.T).T
+       #local_north= (stnRot* north.T).T
+       #local_east= np.cross (local_north.squeeze(), local_pointing.squeeze())
+       #local_crd=-np.bmat([[local_east],[local_north]]).T
 
-       JonesDipMat=LeffXY*bisectRot * stnRot  * polz2cart;
+       JonesDipMat=LeffXY*bisectRot * stnRot * polz2cart;
+       #JonesDipMat=LeffXY*bisectRot * local_crd
        if doPolPrec:
           #With precession:
           JonesDipMat=JonesDipMat * precMat
@@ -69,6 +92,7 @@ def getDipJones(obsTimes,stnPos,stnRot,srcDirection,
           
        if showJones: 
           print JonesDipMat
+          pass
        if doInvJ==True :
           IJonesDipMat=np.linalg.inv(JonesDipMat)
           if doNormalize:
@@ -104,8 +128,8 @@ def getSkyPrecessionMat(me,srcDirection):
        delta=me.direction('J2000',
                    str(deltaJ2000ra)+'rad',str(deltaJ2000dec)+'rad')
        #Convert alpha & delta to directions in the current epoch
-       alphaTru=me.measure(alpha,'JMEAN') #'JTRUE' isn't stable
-       deltaTru=me.measure(delta,'JMEAN')
+       alphaTru=me.measure(alpha,'JTRUE') #'JTRUE' isn't stable
+       deltaTru=me.measure(delta,'JTRUE')
        raA=alphaTru['m0']['value']
        decA=alphaTru['m1']['value']
        alphaTruvec=sph2crt(raA,decA)
@@ -113,13 +137,18 @@ def getSkyPrecessionMat(me,srcDirection):
        decD=deltaTru['m1']['value']
        deltaTruvec=sph2crt(raD,decD)
 
+       cosPrecAng=((alphaTruvec*alphaJ2000vec.T)[0,0]
+                   +(deltaTruvec*deltaJ2000vec.T)[0,0])/2.0
+       sinPrecAng=((alphaTruvec*deltaJ2000vec.T)[0,0]
+                   -(deltaTruvec*alphaJ2000vec.T)[0,0])/2.0
        #Precession of polarization basis is 
-       precMat=np.matrix([ [(alphaTruvec*alphaJ2000vec.T)[0,0],
-                            (alphaTruvec*deltaJ2000vec.T)[0,0]],
-                           [(deltaTruvec*alphaJ2000vec.T)[0,0],
-                            (deltaTruvec*deltaJ2000vec.T)[0,0]] ])
-#       print precMat
-#       print alphaTruvec*deltaTruvec.T
+       #precMat=np.matrix([ [(alphaTruvec*alphaJ2000vec.T)[0,0],
+       #                     (alphaTruvec*deltaJ2000vec.T)[0,0]],
+       #                    [(deltaTruvec*alphaJ2000vec.T)[0,0],
+       #                     (deltaTruvec*deltaJ2000vec.T)[0,0]] ])
+       precMat=np.matrix([[ cosPrecAng,sinPrecAng],
+                          [-sinPrecAng,cosPrecAng]])
+       #print precMat
        return precMat
 
 
@@ -152,8 +181,8 @@ def plotSVJonesGnuplot(Jn):
        s=np.linalg.svd(Jn[ti,:,:].squeeze(),compute_uv=False)
        c=s[0]/s[1]
        cc=np.linalg.cond(Jn[ti,:,:].squeeze())
-       #print ti, -20*log10((c+1)/(c-1) )
-       print ti, s[0]+s[1]
+       print ti, -20*log10((c+1)/(c-1) )
+       #print ti, s[0]+s[1]
 
 def testJonesByAntFld():
    lambda0=2.20 #2.1

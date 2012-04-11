@@ -16,7 +16,7 @@ from pyrap.quanta import quantity
 import pyrap.tables as pt
 from LOFARdipoleJones import getDipJones
 
-__version__="1.2"
+__version__="1.4"
 
 def correctMSforDipole(msfile):
   defaultVisConjOrder=True #Default order is conjugate(ANTENNA1)*ANTENNA2
