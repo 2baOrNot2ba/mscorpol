@@ -1,8 +1,13 @@
-AntennaFieldDirectory='/opt/storage/current/etc/StaticMetaData/' #'/opt/cep/lofar/share/AntennaFields/'
+AntennaFieldDirectory='/opt/lofar/etc/StaticMetaData/' #'/opt/cep/lofar/share/AntennaFields/'
 COMMENT_CHAR = '#'
 
-def parseAntennaField(stationName):
-    filename=AntennaFieldDirectory+'/'+stationName+'-'+'AntennaField'+'.conf'
+def parseAntennaField(stationName,AFfileNameType=2):
+
+    if AFfileNameType==2:
+       basename=stationName+'-'+'AntennaField'+'.conf'
+    else:
+       basename='AntennaField'+stationName+'.conf'
+    filename=AntennaFieldDirectory+'/'+basename
     AntFldData={'LBA': {'NORMAL_VECTOR': [], 'ROTATION_MATRIX':[],'POSITION':[],'REL_POS':[]},
                 'HBA': {'NORMAL_VECTOR': [], 'ROTATION_MATRIX':[],'POSITION':[],'REL_POS':[]},
                 'HBA0': {'NORMAL_VECTOR': [], 'ROTATION_MATRIX':[],'POSITION':[],'REL_POS':[]},
