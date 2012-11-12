@@ -71,6 +71,21 @@ def parseAntennaField(stationName,AFfileNameType=2):
         line=f.readline()
     return AntFldData
 
+def getArrayElemRelPos(stnName,rcumode=5):
+   AntFld=parseAntennaField(stnName)
+   stnLoc=stnName[0:2]
+   if rcumode==3:
+      AntBand='LBA'
+   elif rcumode==5:
+      if stnLoc=='CS' or stnLoc=='RS':
+         AntBand='HBA0'
+      else:
+         AntBand='HBA'
+   #stnPos=np.matrix(AntFld[AntBand]['POSITION']).T
+   #stnRot=np.matrix(AntFld[AntBand]['ROTATION_MATRIX'])
+   stnRelPos=np.matrix(AntFld[AntBand]['REL_POS'])
+   return stnRelPos
+
 if __name__ == '__main__':
   AFD=parseAntennaField('UK608')
   print AFD['HBA']['POSITION']

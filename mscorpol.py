@@ -16,7 +16,7 @@ from pyrap.quanta import quantity
 import pyrap.tables as pt
 from LOFARdipoleJones import getDipJones
 
-__version__="1.4"
+__version__="1.5"
 
 def correctMSforDipole(msfile):
   defaultVisConjOrder=True #Default order is conjugate(ANTENNA1)*ANTENNA2
@@ -46,7 +46,9 @@ def correctMSforDipole(msfile):
       y = quantity(pos[antID,1],'m')
       z = quantity(pos[antID,2],'m')
       stnPos = me.position('ITRF',x,y,z)
-      stnRot=tl.getcol('COORDINATE_AXES')[antID]
+      #Because casacore stores array in Fortran-order, matrices need to be
+      #transposed to get orginal index order.
+      stnRot=(tl.getcol('COORDINATE_AXES')[antID]).T
       JI=getDipJones(tt,stnPos,stnRot,srcDirection,
                 doCirc=not(options.linear),doInvJ=True,doPolPrec=True,showJones=options.jones)
 

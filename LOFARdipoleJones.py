@@ -47,6 +47,7 @@ def getDipJones(obsTimes,stnPos,stnRot,srcDirection,
        #Convert phase ref dir to current polar ITRF
        ITRFdirang=me.measure(srcDirection,'ITRF')
        #azel=me.measure(srcDirection,'AZEL')
+       #print "AZ",azel['m0']['value']/pi*180
        #print "EL",azel['m1']['value']/pi*180
        #Convert polar ITRF to cartesian ITRF
        raITRF=ITRFdirang['m0']['value']
@@ -55,6 +56,7 @@ def getDipJones(obsTimes,stnPos,stnRot,srcDirection,
        l=lmnITRF[0,0]
        m=lmnITRF[0,1]
        n=lmnITRF[0,2]
+       #print "lmn",l,m,n
 
        #Compute polariz comps in spherical sys to cartesian Station coord sys
        polz2cart =1.0/sqrt(l*l+m*m)* np.matrix([
@@ -75,12 +77,14 @@ def getDipJones(obsTimes,stnPos,stnRot,srcDirection,
        #north= sph2crt(N_ITRF['m0']['value'],N_ITRF['m1']['value'])
        #east= sph2crt(E_ITRF['m0']['value'],E_ITRF['m1']['value'])
        #print "N*E", north*east.T
-       #local_pointing= (stnRot* lmnITRF.T).T
-       #local_north= (stnRot* north.T).T
+       #local_pointing= (stnRot.T* lmnITRF.T).T
+       #local_north= (stnRot.T* north.T).T
        #local_east= np.cross (local_north.squeeze(), local_pointing.squeeze())
        #local_crd=-np.bmat([[local_east],[local_north]]).T
 
-       JonesDipMat=LeffXY*bisectRot * stnRot * polz2cart;
+       #Assumption is that stnRot matrix goes from station coord to ITRF.
+       #Hence transpose in following:
+       JonesDipMat=LeffXY*bisectRot * stnRot.T * polz2cart;
        #JonesDipMat=LeffXY*bisectRot * local_crd
        if doPolPrec:
           #With precession:
@@ -175,6 +179,8 @@ def getDipJonesByAntFld(obsTimes,stnName,srcDirection,rcumode=5,lambda0=1):
    stnRot=np.matrix(AntFld[AntBand]['ROTATION_MATRIX'])
    me=measures()
    stnPos_me=me.position('ITRF',str(stnPos[0,0])+'m',str(stnPos[1,0])+'m',str(stnPos[2,0])+'m')
+   #print stnPos[0,0],stnPos[1,0],stnPos[2,0]
+   #print stnRot
    return getDipJones(obsTimes,stnPos_me,stnRot,srcDirection)
 
 def printJones(args):
