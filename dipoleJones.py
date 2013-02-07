@@ -229,33 +229,3 @@ def testJonesByAntFld():
    Jn=getDipJonesByAntFld(obsTimes,stnName,srcDir,5,lambda0)
    plotSVJonesGnuplot(Jn)
 
-if __name__ == "__main__":
-   #testJonesByAntFld()
-   usage = "usage: %prog [options] stnName beginUTC duration timeStep pointingRA pointingDEC"
-   #Example: $ LOFARdipoleJones.py SE607 '2012-04-01 01:02:03' 3600 1 0rad 0rad 
-   opt = optparse.OptionParser(usage=usage)
-
-   #opt.add_option('-s','--stnName',help='LOFAR station name')
-   #opt.add_option('-b','--beginTime',help='begin UTC: YYYY-MM-DDThh:mm:ssZ')
-   #opt.add_option('-d','--duration',help='duration')
-   #opt.add_option('-j','--jones',action="store_true",default=False, help='Just show Jones matrices')
-   opt.add_option('-o','--obsID', default="null", help='LOFAR Observation ID')
-   options, args = opt.parse_args()
-   if options.obsID != "null" :
-      args=[]
-      args.append(' ')
-      args.append(parseParset.getStartTime(options.obsID))
-      args.append(parseParset.getDuration(options.obsID))
-      args.append(parseParset.getStep(options.obsID))
-      args.append(parseParset.getRA(options.obsID))
-      args.append(parseParset.getDEC(options.obsID))
-      stnNames=parseParset.getStnNames(options.obsID)
-      for stnName in stnNames:
-          args[0]=stnName
-          printJones(args)
-
-   elif len(args) != 6:
-      opt.error("incorrect number of arguments")
-   else :
-      printJones(args)
-

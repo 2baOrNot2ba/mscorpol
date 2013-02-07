@@ -9,8 +9,8 @@ from pyrap.quanta import quantity
 import pyrap.tables as pt
 from parseAntennaField import parseAntennaField
 import parseParset
-import LOFARdipoleJones
-import HamakerModel
+import dipoleJones
+import HamakerJones
 
 __version__="1.0"
 
@@ -127,7 +127,7 @@ def getHamakerJones(obsTimes,stnPos,stnRot,srcDirection,freq,
                     sqrt(stnRot[0,2]**2+stnRot[1,2]**2)))
        phi=-az+stnNorthOffsetAng-pi/2.0 #Added -pi/2
        theta=el
-       (JXphi,JXtheta,JYphi,JYtheta)=HamakerModel.getJonesByAzEl(freq,phi,theta)
+       (JXphi,JXtheta,JYphi,JYtheta)=HamakerJones.getJonesByAzEl(freq,phi,theta)
        JonesElemMat=np.matrix([[JXphi,JXtheta],[JYphi,JYtheta]])
 
        #Compute parallactic rotation
@@ -216,7 +216,7 @@ def getJonesByAntFld(model,obsTimes,stnName,srcDirection,freq=75.0E6):
    #print stnPos[0,0],stnPos[1,0],stnPos[2,0]
    #print stnRot
    if model == "dipole":
-      return LOFARdipoleJones.getDipJones(obsTimes,stnPos_me,stnRot,srcDirection)
+      return dipoleJones.getDipJones(obsTimes,stnPos_me,stnRot,srcDirection)
    elif model == "Hamaker":
       return getHamakerJones(obsTimes,stnPos_me,stnRot,srcDirection,freq)
    else:

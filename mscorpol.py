@@ -14,7 +14,7 @@ import numpy as np
 from pyrap.measures import measures
 from pyrap.quanta import quantity
 import pyrap.tables as pt
-from LOFARdipoleJones import getDipJones
+from dipoleJones import getDipJones
 
 __version__="1.5"
 
