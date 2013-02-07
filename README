@@ -1,0 +1,16 @@
+To install "mscorpol" simply untar the distribution file:
+
+$ tar xzf mscorpol_dist.tar
+
+You will need to have casapy installed (on the CEP1: do "use casa").
+No further installation is necessary, unless you need the Hamaker model.
+
+If you also want the Hamaker model of the LOFAR elements 
+you also have to untar the lofar_element_response.tar file,
+(location cep1:/home/carozzi/scripts/mscorpol_dev/lofar_element_response.tar)
+then do:
+
+$ cd lofar_element_response
+$ make
+$ mv ElementResponseMain ../mscorpol/
+
