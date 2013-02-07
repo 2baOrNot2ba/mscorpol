@@ -9,9 +9,13 @@ def convertCppCmplx(cmplxStr):
     return(cmplxFlt)
 
 def getJonesByAzEl(freq,az,el):
-    p = Popen(["./ElementResponseMain", 
-      str(freq),str(az),str(el)],
-      stdout=PIPE,close_fds=True)
+    try:
+      p = Popen(["./ElementResponseMain", 
+          str(freq),str(az),str(el)],
+          stdout=PIPE,close_fds=True)
+    except OSError:
+      print "Could not run 'ElementResponseMain'"
+      exit(1)
     JonesOut = p.communicate()[0].splitlines()
     (JonesStr11,JonesStr12)=JonesOut[0].split(';')
     (JonesStr21,JonesStr22)=JonesOut[1].split(';')
