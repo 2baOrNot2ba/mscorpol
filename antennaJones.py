@@ -249,8 +249,9 @@ def args2inpparms(args):
     return stnName,bTime,duration,stepTime,ra,dec
 
 if __name__ == "__main__":
-   usage = "usage: %prog model [options] stnName beginUTC duration timeStep pointingRA pointingDEC frequency"
+   usage = "usage: %prog model [-o ObsID | stnName beginUTC duration timeStep pointingRA pointingDEC frequency]"
    #Example: $ antennaJones.py Hamaker SE607 '2012-04-01 01:02:03' 60 1 0 0 60E6
+   #     or: $ antennaJones.py dipole -o L29053
    opt = optparse.OptionParser(usage=usage)
 
    opt.add_option('-o','--obsID', default="null", help='LOFAR Observation ID')
