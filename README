@@ -1,6 +1,6 @@
 To install "mscorpol" simply untar the distribution file:
 
-$ tar xzf mscorpol_dist.tar
+$ tar xf mscorpol_v*.tar
 
 You will need to have casapy installed (on the CEP1: do "use casa").
 No further installation is necessary, unless you need the Hamaker model.

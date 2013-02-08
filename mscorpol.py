@@ -16,14 +16,16 @@ from pyrap.quanta import quantity
 import pyrap.tables as pt
 from dipoleJones import getDipJones
 
-__version__="1.5"
+__version__="1.6"
 
 def correctMSforDipole(msfile):
   defaultVisConjOrder=True #Default order is conjugate(ANTENNA1)*ANTENNA2
   me=measures()
-  mstab = pt.table(msfile,readonly=False,ack=True)
-  #Get number of antennas
-  NrOfAnts=msNrOfAnts(mstab)
+  mstab = pt.table(msfile,readonly=False,ack=False)
+  #Get set of all antennas
+  antSet=msUniqAntIDs(mstab)
+  antSet.sort()
+  NrOfAnts=len(antSet)
   ta = pt.table(mstab.getkeyword('ANTENNA'),ack=False)
   pos = ta.getcol('POSITION')
   tl = pt.table(mstab.getkeyword('LOFAR_ANTENNA_FIELD'),ack=False)
@@ -33,14 +35,15 @@ def correctMSforDipole(msfile):
   srcDirection = me.direction('J2000',RA,dec)
   #Get unique list of times
   firstAntID=mstab.getcell("ANTENNA2",0)
-  antUniq=mstab.query('ANTENNA2 == %d' % firstAntID)
-  timevals = antUniq.getcol('TIME')
+  #firstAntID=antSet[0]
+  timeTab=mstab.query('ANTENNA2 == %d' % firstAntID)
+  timevals = timeTab.getcol('TIME')
+  timeTab.close()
   #print timevals
   tt = quantity(timevals,'s')
-  antUniq.close()
   antNr=0
-  for tant in mstab.iter('ANTENNA1'):
-      antID=int(tant.getcol('ANTENNA1')[0])
+  for antID in antSet:
+      #antID=int(tant.getcol('ANTENNA1')[0])
       print "ANTENNA=",antNr,'/',NrOfAnts
       x = quantity(pos[antID,0],'m');
       y = quantity(pos[antID,1],'m')
@@ -55,61 +58,67 @@ def correctMSforDipole(msfile):
       #JI=np.ones((len(timevals),2,2))
       #Start processing DATA
       if not options.jones:
-         #Apply this antennas Jones to DATA that matches value in ANTENNA2
-         if defaultVisConjOrder:
-            pass
-         else:
-            JI=np.conj(JI)
          tant2=mstab.query('ANTENNA2 == %d' % antID)
-         data=tant2.getcol('DATA')    
-         dataCohXY=np.array([[data[:,:,0],data[:,:,1]],[data[:,:,2],data[:,:,3]]])
-         dataCor=np.zeros(dataCohXY.shape,dtype=np.complex)
-         #Multiply Inverse Jones with visibility data.
-         nrSampsPerAntTim=antNr+1
-         for JIt in range(JI.shape[0]):
+         nrSampsPerAntTim= tant2.nrows()/JI.shape[0]
+         if nrSampsPerAntTim != 0:
+           #Apply this antennas Jones to DATA that matches value in ANTENNA2
+           if defaultVisConjOrder:
+             pass
+           else:
+             JI=np.conj(JI)
+           data=tant2.getcol('DATA')    
+           dataCohXY=np.array(
+                      [[data[:,:,0],data[:,:,1]],[data[:,:,2],data[:,:,3]]])
+           dataCor=np.zeros(dataCohXY.shape,dtype=np.complex)
+           #Multiply Inverse Jones with visibility data.
+           for JIt in range(JI.shape[0]):
              for visTimInd in range(nrSampsPerAntTim):
-                dataCor[:,:,JIt*nrSampsPerAntTim+visTimInd,:]=np.transpose(
+               dataCor[:,:,JIt*nrSampsPerAntTim+visTimInd,:]=np.transpose(
                   np.tensordot(
                     dataCohXY[:,:,JIt*nrSampsPerAntTim+visTimInd,:],JI[JIt,:,:],
                   axes=[[1],[1]]),
                   (0,2,1))
-         dataCorOut=np.transpose(
-          [dataCor[0,0,:,:],dataCor[0,1,:,:],dataCor[1,0,:,:],dataCor[1,1,:,:]],
-                              (1,2,0))
-         tant2.putcol('DATA',dataCorOut)
+           dataCorOut=np.transpose(
+                           [dataCor[0,0,:,:],dataCor[0,1,:,:],
+                            dataCor[1,0,:,:],dataCor[1,1,:,:]], (1,2,0))
+           tant2.putcol('DATA',dataCorOut)
          tant2.close()
 
+         tant=mstab.query('ANTENNA1 == %d' % antID)
+         nrSampsPerAntTim= tant.nrows()/JI.shape[0]
          #Apply this antennas Jones matrix to DATA for ANTENNA1
-         if defaultVisConjOrder:
-            JI=np.conj(JI)
-         else:
-            JI=np.conj(JI) #Note: Jones inv has been conjugated once already.
-         data=tant.getcol('DATA')    
-         dataCohXY=np.array([[data[:,:,0],data[:,:,1]],[data[:,:,2],data[:,:,3]]])
-         dataCor=np.zeros(dataCohXY.shape,dtype=np.complex)
-         #Multiply Inverse Jones with visibility data.
-         nrSampsPerAntTim=NrOfAnts-antNr
-         for JIt in range(JI.shape[0]):
+         if nrSampsPerAntTim != 0:
+           if defaultVisConjOrder:
+             JI=np.conj(JI)
+           else:
+             JI=np.conj(JI) #Note: Jones inv has been conjugated once already.
+           data=tant.getcol('DATA')    
+           dataCohXY=np.array([[data[:,:,0],data[:,:,1]],[data[:,:,2],data[:,:,3]]])
+           dataCor=np.zeros(dataCohXY.shape,dtype=np.complex)
+           #Multiply Inverse Jones with visibility data.
+           for JIt in range(JI.shape[0]):
              for visTimInd in range(nrSampsPerAntTim):
-                dataCor[:,:,JIt*nrSampsPerAntTim+visTimInd,:]=np.tensordot(
+               dataCor[:,:,JIt*nrSampsPerAntTim+visTimInd,:]=np.tensordot(
                     JI[JIt,:,:],dataCohXY[:,:,JIt*nrSampsPerAntTim+visTimInd,:],
                          axes=[[1],[0]])
 
-         dataCorOut=np.transpose(
-          [dataCor[0,0,:,:],dataCor[0,1,:,:],dataCor[1,0,:,:],dataCor[1,1,:,:]],
-                              (1,2,0))
-         tant.putcol('DATA',dataCorOut)
+           dataCorOut=np.transpose(
+                        [dataCor[0,0,:,:],dataCor[0,1,:,:],
+                         dataCor[1,0,:,:],dataCor[1,1,:,:]], (1,2,0))
+           tant.putcol('DATA',dataCorOut)
+         tant.close()
       antNr=antNr+1
 
   if not options.jones: updateMSmetadata(msfile)
 
-def msNrOfAnts(mainTab):
+
+def msUniqAntIDs(mainTab):
   antslist=set([])
   for ants in mainTab.iter("ANTENNA1"):
       antslist.add(ants.getcell("ANTENNA1",0))
   for ants in mainTab.iter("ANTENNA2"):
       antslist.add(ants.getcell("ANTENNA2",0))
-  return len(antslist)
+  return list(antslist)
 
 
 def updateMSmetadata(msfile):
@@ -121,7 +130,7 @@ def updateMSmetadata(msfile):
   tr=th.row()
   tr.put(nr,{'TIME': quantity('today').get('s').get_value(),
              'OBSERVATION_ID':0,
-             'MESSAGE': 'Applied polarization corrections',
+             'MESSAGE': 'Applied polarization modifications',
              'PRIORITY': 'NORMAL',
              'ORIGIN': '%s: version = %s' % (__file__,__version__),
              'OBJECT_ID':0, 
