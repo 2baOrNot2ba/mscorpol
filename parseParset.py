@@ -28,14 +28,48 @@ def getSubbandList(obsID):
         sblst.extend(range(int(sbStart),int(sbStop)+1))
     return sblst
 
+def getBandFilter(obsID):
+    filterbandStr=getParam(obsID, "Observation.bandFilter", "string")
+    bandlabel,filter_low_freq_str,filter_hi_freq_str=filterbandStr.split("_")
+    return bandlabel,float(filter_low_freq_str),float(filter_hi_freq_str)
+
 def getSubbandFreqs(obsID):
     sbwidth=getParam(obsID,"Observation.subbandWidth","float")
     sblst=getSubbandList(obsID)
+    bandlabel,filter_low_freq,filter_hi_freq=getBandFilter(obsID)
+    CLOCKRES=sbwidth/1000.0
+#/* VLAD: 17.10.2012 Should work for all possible filters and antennas */
+#float extra_half, lower_edge;
+    if CLOCKRES == 0.1953125:
+       #// 200 MHz clock
+       if filter_low_freq >= 200:
+          lower_edge = 200.0
+       elif filter_low_freq < 200 and filter_low_freq >= 100:
+          lower_edge = 100.0
+       else:
+          lower_edge = 0.0
+    else : #// 160 MHz clock
+       if filter_low_freq >= 160:
+          lower_edge = 160.0
+       elif filter_low_freq < 160 and filter_low_freq >= 80:
+          lower_edge = 80.0
+       else:
+          lower_edge = 0.0
+#// this line takes care if we use 2nd PPF or not as in the case when we bypass 2nd PPF (1chan/sub)
+#// we do not need to subtract half of the channel width for frequency calculation
+    #if NCHANNELS > 1:
+    #   extra_half = 0.5
+    #else:
+    #   extra_half = 0.0
+
     freqs=[]
     for sbNr in sblst:
-      freqs.append(sbNr*sbwidth*1000.0) #in Hz
+    #  the_freq=lower_edge+(SUBBLIST[isub]+float(ichan)/float(NCHANNELS)-extra_half)*CLOCKRES
+      the_freq=lower_edge+(sbNr)*CLOCKRES
+      #freqs.append(sbNr*sbwidth*1000.0) #in Hz
+      freqs.append(the_freq*1E6) #in Hz
     return freqs
-
+ 
 def getParam(obsID,paramName,dataType):
 
     basename=obsID
