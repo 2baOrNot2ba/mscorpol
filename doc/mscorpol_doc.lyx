@@ -1,0 +1,873 @@
+#LyX 2.0 created this file. For more info see http://www.lyx.org/
+\lyxformat 413
+\begin_document
+\begin_header
+\textclass article
+\use_default_options false
+\begin_modules
+theorems-ams
+eqs-within-sections
+figs-within-sections
+\end_modules
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman times
+\font_sans lmss
+\font_typewriter cmtt
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_amsmath 1
+\use_esint 0
+\use_mhchem 0
+\use_mathdots 1
+\cite_engine basic
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\use_refstyle 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+LOFAR software for beam correction and circular conversion software
+\end_layout
+
+\begin_layout Author
+T.
+ D.
+ Carozzi
+\begin_inset Newline linebreak
+\end_inset
+
+Onsala Space Observatory, Sweden
+\end_layout
+
+\begin_layout Date
+15 May 2012 (Created 27 Jan 2011)
+\end_layout
+
+\begin_layout Section
+Release news
+\end_layout
+
+\begin_layout Itemize
+12 Feb 2013, version 1.7: Input MS file is not required to have autocorrelations.
+ The 
+\begin_inset Quotes eld
+\end_inset
+
+antennaJones.py
+\begin_inset Quotes erd
+\end_inset
+
+ module now can compute Jones matrices (without resorting to an MS file).
+ It knows about 2 different antenna element models: the default ideal electric
+ dipole, and the Hamaker model based on code from ASTRON.
+\end_layout
+
+\begin_layout Itemize
+15 May 2012, version 1.6, First release
+\end_layout
+
+\begin_layout Section
+Background motivation
+\end_layout
+
+\begin_layout Standard
+The Long-baseline group (LBG) noted the issue of differential Faraday rotation
+ degradation of LOFAR observations.
+ As this affects long-baselines most, it was decided that the LBG should
+ try to find a solution.
+ The short term solution that would allow further meaningful processing
+ of LOFAR data was suggested: to convert the data output, which is currently
+ in terms of linear polarized components, into circularly polarized components.
+ It was also proposed that a polarimetric correction for the LOFAR beam
+ be applied to the standard data output concurrently to the conversion to
+ circular.
+\end_layout
+
+\begin_layout Section
+Mathematical background: Jones matrix for LOFAR
+\end_layout
+
+\begin_layout Standard
+LOFAR receives electric fields radiated from celestial sources.
+ We will use the IAU coordinate system at some epoch (normally J2000) for
+ these impinging polarized electric fields, which in the linear (noncircular)
+ basis can be written
+\begin_inset Formula 
+\begin{align}
+\mathbf{e}_{\mathrm{radec}}= & \left(\begin{array}{c}
+e_{\alpha}\\
+e_{\delta}
+\end{array}\right)
+\end{align}
+
+\end_inset
+
+where right ascension is 
+\begin_inset Formula $\alpha$
+\end_inset
+
+ and declination is 
+\begin_inset Formula $\delta$
+\end_inset
+
+ coordinates of the equatorial system.
+ This field is can be seen as the input to the LOFAR measurement equation.
+ The IAU also support a circular basis which is related to the linear basis
+ via
+\begin_inset Formula 
+\begin{equation}
+\mathbf{e}_{\mathrm{radec}}^{\circ}=\left(\begin{array}{c}
+e_{r}\\
+e_{l}
+\end{array}\right)=\boldsymbol{\mathsf{C}}\mathbf{e}_{\mathrm{radec}}\label{eq:Lin2Circ}
+\end{equation}
+
+\end_inset
+
+where 
+\begin_inset Formula $r,l$
+\end_inset
+
+ denote the right and left handed components respectively.
+\begin_inset Formula 
+\begin{equation}
+\boldsymbol{\mathsf{C}}=\frac{1}{\sqrt{2}}\left(\begin{array}{cc}
+1 & +\mathrm{i}\\
+1 & -\mathrm{i}
+\end{array}\right)
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The output of the measurement equation is the induced voltages out of LOFAR
+ receivers which we denote
+\begin_inset Formula 
+\begin{align}
+\mathbf{V}_{XY}= & \left(\begin{array}{c}
+V_{X}\\
+V_{Y}
+\end{array}\right)
+\end{align}
+
+\end_inset
+
+where are the 
+\begin_inset Formula $X$
+\end_inset
+
+ and 
+\begin_inset Formula $Y$
+\end_inset
+
+ are channels associated with the LOFAR polarized antennas along the correspondi
+ng local cartesian horizontal directions of the antenna coordinate system,
+ with 
+\begin_inset Formula $Z$
+\end_inset
+
+ along the vertical towards zenith.
+\end_layout
+
+\begin_layout Standard
+At the time when a certain measurement is made the apparent direction of
+ the incoming field will be different from the position given at the standard
+ epoch due to the precession of the equinoxes.
+ This results in an apparent rotation of the electric field given by the
+ 2x2 rotation matrix
+\begin_inset Formula 
+\begin{equation}
+\boldsymbol{\mathsf{R}}_{\mathrm{polzprec}}
+\end{equation}
+
+\end_inset
+
+so 
+\begin_inset Formula 
+\begin{equation}
+\mathbf{e}_{\mathrm{radec,app}}=\boldsymbol{\mathsf{R}}_{\mathrm{polzprec}}\mathbf{e}_{\mathrm{radec}}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In between in the input to LOFAR and the output from LOFAR we assume a linear
+ matrix relation.
+ The (potentially) complex 2x2 matrix that connects the two via a matrix
+ multiplication is known as the Jones matrix.
+\end_layout
+
+\begin_layout Subsection
+Electric dipole model Jones
+\end_layout
+
+\begin_layout Standard
+In this section, let us model the LOFAR response as an ideal short electric
+ dipole (ied).
+ To derive the Jones matrix in this case we make use of the fact that the
+ voltage induced in an ied is proportional to the electric field along the
+ direction of the dipole, in other words it picks up the cartesian component
+ of the E-field along which it is extended.
+ The electric field from some direction, however, is given in IAU system
+ which is a spherical coordinate system.
+ Therefore we proceed by converting the spherical components into a cartesian
+ system.
+\end_layout
+
+\begin_layout Subsection
+Equatorial to ITRF
+\end_layout
+
+\begin_layout Standard
+The cartesian system used by LOFAR is the cartesian ITRF.
+ The transformation from the equatorial to ITRF is
+\begin_inset Formula 
+\begin{align}
+\mathbf{e}_{\mathrm{ITRF}}^{(3)}= & \boldsymbol{\mathsf{T}}_{\mathrm{sph2cart}}\left(l=l_{\mathrm{ITRF}},m=m_{\mathrm{ITRF}},n=n_{\mathrm{ITRF}}\right)\mathbf{e}_{\mathrm{radec}}
+\end{align}
+
+\end_inset
+
+with
+\begin_inset Formula 
+\begin{align}
+\mathbf{e}_{\mathrm{ITRF}}^{(3)}= & e_{x}\hat{\mathbf{x}}+e_{y}\hat{\mathbf{y}}+e_{z}\hat{\mathbf{z}}=\left(e_{x},e_{y},e_{z}\right)^{\mathrm{\mathsf{T}}}
+\end{align}
+
+\end_inset
+
+the 
+\begin_inset Formula $\hat{\mathbf{x}},\hat{\mathbf{y}},\hat{\mathbf{z}}$
+\end_inset
+
+ basis being the ITRF basis, and
+\begin_inset Formula 
+\begin{align}
+\boldsymbol{\mathsf{T}}_{\mathrm{sph2crt}}\left(l,m,n\right)= & \frac{1}{\sqrt{l^{2}+m^{2}}}\left(\begin{array}{cc}
+m & ln\\
+-l & mn\\
+0 & -l^{2}-m^{2}
+\end{array}\right)\label{eq:Tsph2crtDef}
+\end{align}
+
+\end_inset
+
+and where
+\begin_inset Formula 
+\begin{align}
+\mathbf{s}_{\mathrm{ITRF}} & =l_{\mathrm{ITRF}}\hat{\mathbf{x}}+m_{\mathrm{ITRF}}\hat{\mathbf{y}}+n_{\mathrm{ITRF}}\hat{\mathbf{z}}\nonumber \\
+ & =\left(l_{\mathrm{ITRF}},m_{\mathrm{ITRF}},n_{\mathrm{ITRF}}\right)^{\mathsf{T}}
+\end{align}
+
+\end_inset
+
+Eq.
+ (
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:Tsph2crtDef"
+
+\end_inset
+
+) is equivalent to the 
+\begin_inset Formula $\boldsymbol{\mathsf{T}}'(\Theta=\pi/2)$
+\end_inset
+
+ in eq.
+ (B6) in Carozzi & Woan (2009).
+\end_layout
+
+\begin_layout Standard
+Now we have converted the electric field from a 2D spherical system to 3D
+ cartesian system.
+\end_layout
+
+\begin_layout Subsection
+ITRF to station coordinates
+\end_layout
+
+\begin_layout Standard
+Each LOFAR station has a local cartesian coordinate system called the 
+\emph on
+station coordinate system
+\emph default
+ (stn).
+ M.
+ Brentjens document 
+\begin_inset Quotes eld
+\end_inset
+
+Station coordinate system
+\begin_inset Quotes erd
+\end_inset
+
+ (2009), defines a basis system, 
+\begin_inset Formula $\hat{\mathbf{p}},\hat{\mathbf{q}},\hat{\mathbf{r}}$
+\end_inset
+
+ .
+ Relative to the ITRF, stn can found by using the rotation matrix of a station
+ that is provided in the COORDINATE_SYSTEM column of the LOFAR_ANTENNA_FIELD
+ table in the measurement set (MS) file of the data.
+ Let denote this matrix
+\begin_inset Formula 
+\begin{align}
+\boldsymbol{\mathsf{M}}_{\mathrm{stn2ITRF}}= & \left(\begin{array}{ccc}
+\hat{p}_{x} & \hat{q}_{x} & \hat{r}_{x}\\
+\hat{p}_{y} & \hat{q}_{y} & \hat{r}_{y}\\
+\hat{p}_{z} & \hat{q}_{z} & \hat{r}_{z}
+\end{array}\right)
+\end{align}
+
+\end_inset
+
+and its inverse as 
+\begin_inset Formula 
+\begin{align}
+\boldsymbol{\mathsf{M}}_{\mathrm{ITRF2stn}}= & \boldsymbol{\mathsf{M}}_{\mathrm{stn2ITRF}}^{\mathsf{T}}
+\end{align}
+
+\end_inset
+
+With this given matrix we can transform from the ITRF system into station
+ coordinates, so the 3D cartesian vector representation of the incoming
+ electric field in the stn coordinate system can be expressed
+\begin_inset Formula 
+\begin{align}
+\mathbf{e}_{\mathrm{stn}}^{(3)}= & \boldsymbol{\mathsf{M}}_{\mathrm{ITRF2stn}}\mathbf{e}_{\mathrm{ITRF}}^{(3)}=\boldsymbol{\mathsf{M}}_{\mathrm{ITRF2stn}}\boldsymbol{\mathsf{T}}_{\mathrm{sph2crt}}(\mathbf{s}=\mathbf{s}_{\mathrm{ITRF}})\mathbf{e}_{\mathrm{radec}}
+\end{align}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Station coordinates to Antenna coordinates
+\end_layout
+
+\begin_layout Standard
+The stn coordinate system is not aligned with the dipole directions.
+ Let us call the coordinate system which is aligned with the dipoles the
+ 
+\emph on
+antenna
+\emph default
+ coordinate system (XY).
+ For all LOFAR stations, the dipoles are rotated 45
+\begin_inset Formula $^{\circ}$
+\end_inset
+
+ from the station coordinate system.
+ From Fig 1 in Brentjens (2009), the precise rotation between the station
+ (stn) and antenna (XY) coordinates is given by the rotation matrix 
+\begin_inset Formula 
+\begin{align}
+\boldsymbol{\mathsf{M}}_{\mathrm{stn2XY}}= & \frac{1}{\sqrt{2}}\left(\begin{array}{ccc}
++1 & -1 & 0\\
+-1 & -1 & 0\\
+0 & 0 & \sqrt{2}
+\end{array}\right)
+\end{align}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Conversion of electric field to voltages through ied
+\end_layout
+
+\begin_layout Standard
+Now with the electric field expressed in a cartesian coordinate system aligned
+ with the LOFAR dipoles, we can apply the ideal electric dipoles (ied) model.
+ As mentioned above, the response is parallel to the dipole vector.
+ LOFAR has two nominally orthogonal dipoles so the response can be modeled
+ by the 2
+\begin_inset Formula $\times$
+\end_inset
+
+3 matrix
+\begin_inset Formula 
+\begin{align}
+\boldsymbol{\mathsf{L}}_{\mathrm{ied}}= & L\left(\begin{array}{ccc}
+1 & 0 & 0\\
+0 & 1 & 0
+\end{array}\right)
+\end{align}
+
+\end_inset
+
+Thus the open-circuit voltage excited by the incident electric field is
+\begin_inset Formula 
+\begin{align}
+\mathbf{V}= & \boldsymbol{\mathsf{L}}_{\mathrm{ied}}\mathbf{e}_{\mathrm{stn}}^{(3)}
+\end{align}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Compound Jones matrix
+\end_layout
+
+\begin_layout Standard
+The compound measurement equation for LOFAR modeled as dipoles can therefore
+ be written as
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align}
+\mathbf{V}= & \boldsymbol{\mathsf{L}}_{\mathrm{ied}}\boldsymbol{\mathsf{M}}_{\mathrm{stn2XY}}\boldsymbol{\mathsf{M}}_{\mathrm{ITRF2stn}}\boldsymbol{\mathsf{T}}_{\mathrm{sph2crt}}\left(\mathbf{s}=\mathbf{s}_{\mathrm{ITRF}}\right)\boldsymbol{\mathsf{R}}_{\mathrm{polzprec}}\mathbf{e}_{\mathrm{radec}}
+\end{align}
+
+\end_inset
+
+for the source polarization given in a linear basis at a standard epoch.
+ For the circular polarization basis, the formula is
+\begin_inset Formula 
+\begin{align}
+\mathbf{V}= & \boldsymbol{\mathsf{L}}_{\mathrm{ied}}\boldsymbol{\mathsf{M}}_{\mathrm{stn2XY}}\boldsymbol{\mathsf{M}}_{\mathrm{ITRF2stn}}\boldsymbol{\mathsf{T}}_{\mathrm{sph2crt}}\left(\mathbf{s}=\mathbf{s}_{\mathrm{ITRF}}\right)\boldsymbol{\mathsf{R}}_{\mathrm{polzprec}}\boldsymbol{\mathsf{C}}^{\mathsf{H}}\boldsymbol{\mathsf{C}}\mathbf{e}_{\mathrm{radec}}\nonumber \\
+= & \boldsymbol{\mathsf{L}}_{\mathrm{ied}}\boldsymbol{\mathsf{M}}_{\mathrm{stn2XY}}\boldsymbol{\mathsf{M}}_{\mathrm{ITRF2stn}}\boldsymbol{\mathsf{T}}_{\mathrm{sph2crt}}\left(\mathbf{s}=\mathbf{s}_{\mathrm{ITRF}}\right)\boldsymbol{\mathsf{R}}_{\mathrm{polzprec}}\boldsymbol{\mathsf{C}}^{\mathsf{H}}\mathbf{e}_{\mathrm{radec}}^{\circ}
+\end{align}
+
+\end_inset
+
+If the electric field is to be expressed in the apparent equatorial coordinate
+ system the measurement equations are
+\begin_inset Formula 
+\begin{align}
+\mathbf{V}= & \boldsymbol{\mathsf{L}}_{\mathrm{ied}}\boldsymbol{\mathsf{M}}_{\mathrm{stn2XY}}\boldsymbol{\mathsf{M}}_{\mathrm{ITRF2stn}}\boldsymbol{\mathsf{T}}_{\mathrm{sph2crt}}\left(\mathbf{s}=\mathbf{s}_{\mathrm{ITRF}}\right)\mathbf{e}_{\mathrm{radec,app}}
+\end{align}
+
+\end_inset
+
+and
+\begin_inset Formula 
+\begin{align}
+\mathbf{V}= & \boldsymbol{\mathsf{L}}_{\mathrm{ied}}\boldsymbol{\mathsf{M}}_{\mathrm{stn2XY}}\boldsymbol{\mathsf{M}}_{\mathrm{ITRF2stn}}\boldsymbol{\mathsf{T}}_{\mathrm{sph2crt}}\left(\mathbf{s}=\mathbf{s}_{\mathrm{ITRF}}\right)\mathbf{\boldsymbol{\mathsf{C}}^{\mathsf{H}}e}_{\mathrm{radec,app}}
+\end{align}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Now if we want to correct the measured voltages so that they represent the
+ electric field then we must invert the Jones matrix in these compound equations.
+ So
+\begin_inset Formula 
+\begin{align}
+\mathbf{e}_{\mathrm{radec}}= & \left(\boldsymbol{\mathsf{L}}_{\mathrm{ied}}\boldsymbol{\mathsf{M}}_{\mathrm{stn2XY}}\boldsymbol{\mathsf{M}}_{\mathrm{ITRF2stn}}\boldsymbol{\mathsf{T}}_{\mathrm{sph2crt}}\left(\mathbf{s}=\mathbf{s}_{\mathrm{ITRF}}\right)\boldsymbol{\mathsf{R}}_{\mathrm{polzprec}}\right)^{-1}\mathbf{V}
+\end{align}
+
+\end_inset
+
+and analogously for the other representations.
+ 
+\end_layout
+
+\begin_layout Standard
+It useful to notice that the electric field in the circular basis can be
+ obtained from the electric field in the linear basis by factoring out the
+ 
+\begin_inset Formula $\boldsymbol{\mathsf{C}}$
+\end_inset
+
+ matrix as in equation (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:Lin2Circ"
+
+\end_inset
+
+).
+ Likewise, the polarization in the epochal equatorial coordinate system
+ can be computed from the apparent equatorial system by applying the polarizatio
+n precession matrix 
+\begin_inset Formula $\boldsymbol{\mathsf{R}}_{\mathrm{polzprec}}$
+\end_inset
+
+.
+ Therefore it is minimally sufficient to compute the inverse of the Jones
+ matrix to the linear apparent equatorial system, and then optionally apply
+ the precession matrix and/or the circular basis matrix to obtain all the
+ systems of interest.
+\end_layout
+
+\begin_layout Standard
+The final data output of LOFAR is correlations of the complex voltages 
+\begin_inset Formula $\mathbf{V}^{(p)},\mathbf{V}^{(q)}$
+\end_inset
+
+ from pairs of stations 
+\begin_inset Formula $p,q$
+\end_inset
+
+ i.e.
+ the visibilities 
+\begin_inset Formula $\boldsymbol{\mathscr{V}}^{(p,q)}=\mathbf{V}^{(p)}\otimes\left(\mathbf{V}^{(q)}\right)^{\ast}$
+\end_inset
+
+.
+ So to apply these corrections to the MS data one must compute the Jones
+ matrix for each pair of stations and apply the inverse taking care to conjugate
+ one the stations appropriately.
+\end_layout
+
+\begin_layout Section
+Description of the 
+\family typewriter
+mscorpol
+\family default
+ Software
+\end_layout
+
+\begin_layout Subsection
+Summary
+\end_layout
+
+\begin_layout Standard
+The mathematics presented in the previous section to correct the measurement
+ set (MS) data for the LOFAR antenna response has been implemented in a
+ 
+\family typewriter
+python
+\family default
+ script developed by the author called 
+\family typewriter
+mscorpol
+\family default
+, which is meant to stand for 
+\begin_inset Quotes eld
+\end_inset
+
+measurement set correct for polarization response
+\begin_inset Quotes erd
+\end_inset
+
+.
+ The Jones matrix that it currently corrects for is an ideal electric dipole
+ with effective length set to 1 
+\begin_inset Foot
+status collapsed
+
+\begin_layout Plain Layout
+The effective length for a short dipole is equal to physical length of the
+ dipole but because the absolute gain is anyways difficult to determine
+ we can simply use 1 meter.
+\end_layout
+
+\end_inset
+
+ for all frequencies, with the look direction set to the phase reference
+ direction given in the MS.
+ This type of correction can seen as a purely geometric correction of the
+ projection of the electric field done for the center of the source field.
+ The main advantage of this correction is that it is simple to understand
+ conceptually and it requires no auxiliary parameters beyond what is provided
+ by the MS file.
+ More complex models would require tables of coefficients to describe the
+ frequency dependence and the directional dependence of the antennas.
+ 
+\end_layout
+
+\begin_layout Standard
+The software also has support for computing Jones matrices for observations
+ without an MS file, e.g.
+ beamformed data (although it can not update this data, only compute the
+ corresponding Jones matrices).
+ The relevant command is 
+\family typewriter
+antennaJones
+\end_layout
+
+\begin_layout Itemize
+Version: 1.6
+\end_layout
+
+\begin_layout Itemize
+Dependencies: 
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+
+\family typewriter
+python 2.6.5
+\end_layout
+
+\begin_layout Itemize
+
+\family typewriter
+numpy
+\end_layout
+
+\begin_layout Itemize
+
+\family typewriter
+pyrap
+\end_layout
+
+\begin_layout Itemize
+
+\family typewriter
+dipoleJones
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+optional:
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+
+\family typewriter
+parseAntennaField
+\end_layout
+
+\begin_layout Itemize
+
+\family typewriter
+HamakerJones
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+Depends on: 
+\family typewriter
+ElementResponseMain
+\family default
+ (a stdin/stdout version of the 
+\family typewriter
+lofar_element_response 
+\family default
+ASTRON code)
+\end_layout
+
+\end_deeper
+\end_deeper
+\begin_layout Itemize
+Assumptions:
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+Input MS file is nominal LOFAR (linearly polarized) data output
+\end_layout
+
+\begin_layout Itemize
+The DATA column in the MS file is taken as input and results are written
+ in the same DATA column.
+ Thus original data is overwritten.
+\end_layout
+
+\begin_layout Itemize
+Default setting is such that visibility data is 
+\begin_inset Formula $DATA(ANTENNA1,ANTENNA2)=V(ANTENNA1)^{\ast}\times V(ANTENNA2)$
+\end_inset
+
+, where V() is the raw voltage of the corresponding antenna (can be flipped
+ with internal flag).
+\end_layout
+
+\begin_layout Itemize
+The MS file is regular: i.e.
+ for each unique value in TIME there is a value in DATA for all baselines
+ (ANTENNA1 and ANTENNA2 combinations)
+\end_layout
+
+\begin_layout Itemize
+The time period of an MS file is not that long, so for the epoch precession
+ it is sufficient to compute it at the start time.
+ 
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+The optional 
+\family typewriter
+parseAntennaField 
+\family default
+module allows to work without MS files.
+\end_layout
+
+\begin_layout Subsection
+Examples
+\end_layout
+
+\begin_layout Subsubsection
+mscorpol
+\end_layout
+
+\begin_layout Standard
+Normally the script is executed on an MS file to produce dipole corrected
+ data in a circular basis.
+ The shell command:
+\begin_inset listings
+lstparams "basicstyle={\ttfamily}"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+$ mscorpol.py -f L2011_25115_SB102.MS 
+\end_layout
+
+\end_inset
+
+produces corrected data in the DATA column and outputs it in the DATA column.
+\end_layout
+
+\begin_layout Standard
+If one wishes to correct for the dipole project but keep the result in linear
+ polarization basis (IAU standard frame), then use
+\begin_inset listings
+lstparams "basicstyle={\ttfamily}"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+$ mscorpol.py -l -f L2011_25115_SB102.MS 
+\end_layout
+
+\end_inset
+
+where the -l flag represents output in the linear basis.
+\end_layout
+
+\begin_layout Standard
+To inspect the Jones matrices used in the correction use
+\begin_inset listings
+lstparams "basicstyle={\ttfamily}"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+$ mscorpol.py -j -f L2011_25115_SB102.MS 
+\end_layout
+
+\end_inset
+
+Note that this flag does not update the data.
+ The MS file can either be original LOFAR data or data that already has
+ been processed by 
+\family typewriter
+mscorpol.
+\end_layout
+
+\begin_layout Subsubsection
+antennaJones
+\end_layout
+
+\begin_layout Standard
+If you want to compute Jones matrices without necessarily having an MS file,
+ you can use the 
+\family typewriter
+antennaJones
+\family default
+ script.
+ To run it from the shell:
+\begin_inset listings
+lstparams "basicstyle={\ttfamily}"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+$ antennaJones.py Hamaker SE607 '2012-04-01 01:02:03' 60 1 0.1 0.2 60E6
+\end_layout
+
+\end_inset
+
+This computes Jones matrices based on the Hamaker (ASTRON) model of the
+ LOFAR element antennas for station SE607, start time '2012-04-01 01:02:03',
+ for a duration of 60 s in 1 s time steps for the direction 0.1 rad RA and
+ 0.2 rad DEC at 60 MHz.
+ Or it can be run based on observation information from a LOFAR parset file,
+ e.g.
+\begin_inset listings
+lstparams "basicstyle={\ttfamily}"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+$ antennaJones.py dipole -o L29053
+\end_layout
+
+\end_inset
+
+where L29052 is the LOFAR observation id.
+\end_layout
+
+\begin_layout Subsection
+Algorithm
+\end_layout
+
+\begin_layout Standard
+The algorithm used by mscorpol version 1 is as folows.
+ Iterate over ANTENNA1 in MS file.
+ For current antenna number, compute the Jones matrix as per Section 2 for
+ all the unique times.
+ Apply the conjugated inverted Jones matrices to the selected DATA, and
+ apply the nonconjugated Jones matrices to DATA for which ANTENNA2 matches
+ current antenna number.
+\end_layout
+
+\end_body
+\end_document

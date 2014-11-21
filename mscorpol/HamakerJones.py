@@ -10,7 +10,7 @@ def convertCppCmplx(cmplxStr):
 
 def getJonesByAzEl(freq,az,el):
     try:
-      p = Popen(["./ElementResponseMain", 
+      p = Popen(["../lofar_element_response/ElementResponseMain", 
           str(freq),str(az),str(el)],
           stdout=PIPE,close_fds=True)
     except OSError:
@@ -27,14 +27,14 @@ def getJonesByAzEl(freq,az,el):
 
 if __name__ == "__main__":
    
-    freq=3e7
+    freq=8e7
     az=np.arange(0.0,2*np.pi,0.1)
-    el=np.arange(0.0,np.pi,0.1)
+    el=np.arange(0.0,np.pi/2,0.1)
     #azs,els=np.meshgrid(az,el)
     print "set hidden3d"
     print "splot '-' with lines"
     for azi in az:
       for eli in el:
          JXphi,JXtheta,JYphi,JYtheta=getJonesByAzEl(freq,azi,eli)
-         print azi,eli,JXphi.real
+         print azi,eli,JXtheta.real
       print ""

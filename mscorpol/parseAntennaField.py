@@ -1,4 +1,4 @@
-AntennaFieldDirectory='/opt/lofar/etc/StaticMetaData/' #'/opt/cep/lofar/share/AntennaFields/'
+AntennaFieldDirectory='/usr/local/src/NDPPP/LOFAR/MAC/Deployment/data/StaticMetaData/AntennaFields/'
 COMMENT_CHAR = '#'
 
 def parseAntennaField(stationName,AFfileNameType=2):

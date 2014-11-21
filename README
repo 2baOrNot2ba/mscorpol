@@ -1,0 +1,2 @@
+mscorpol is a python module that corrects LOFAR measurement set data as to
+account for the antenna Jones response. Read more in doc/mscorpol_doc.pdf .
