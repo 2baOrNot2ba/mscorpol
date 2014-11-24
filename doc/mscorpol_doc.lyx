@@ -80,7 +80,7 @@ Onsala Space Observatory, Sweden
 \end_layout
 
 \begin_layout Date
-15 May 2012 (Created 27 Jan 2011)
+24 Nov 2012 (Created 27 Jan 2011)
 \end_layout
 
 \begin_layout Section
@@ -88,7 +88,12 @@ Release news
 \end_layout
 
 \begin_layout Itemize
-12 Feb 2013, version 1.7: Input MS file is not required to have autocorrelations.
+24 Nov 2014, version 1.7: Reorganized package and prepared for release on
+ github.
+\end_layout
+
+\begin_layout Itemize
+12 Feb 2013, version 1.6: Input MS file is not required to have autocorrelations.
  The 
 \begin_inset Quotes eld
 \end_inset
@@ -103,7 +108,7 @@ antennaJones.py
 \end_layout
 
 \begin_layout Itemize
-15 May 2012, version 1.6, First release
+15 May 2012, version 1.5, First release
 \end_layout
 
 \begin_layout Section
