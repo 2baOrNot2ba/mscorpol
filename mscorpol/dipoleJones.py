@@ -15,6 +15,7 @@ pm=-1
 lin2circ =1/sqrt(2)*np.matrix([[1.,pm*1.*1j],[1., pm*-1.*1j]])
 #Inverse of previous
 lin2circH=lin2circ.H
+
 #Effective lengths of electric dipoles along nominal LOFAR XY directions
 LeffXY=np.matrix('1 0 0; 0 1 0')
 #The rotation matrix from station coordinates to antenna XY coordinates:   
@@ -25,7 +26,7 @@ bisectRot = np.matrix([[-1/sqrt(2), -1/sqrt(2), 0],
 def getDipJones(obsTimes,stnPos,stnRot,srcDirection,
                 doInvJ=False,doPolPrec=True,doCirc=False,
                 showJones=False,doNormalize=False):
-
+   dipRespON=True
    obsTimesArr=obsTimes.get_value(); obsTimeUnit=obsTimes.get_unit()
    if doInvJ==True:
       InvJonesDip=zeros((len(obsTimesArr),2,2),dtype=complex)
@@ -82,10 +83,16 @@ def getDipJones(obsTimes,stnPos,stnRot,srcDirection,
        #local_east= np.cross (local_north.squeeze(), local_pointing.squeeze())
        #local_crd=-np.bmat([[local_east],[local_north]]).T
 
-       #Assumption is that stnRot matrix goes from station coord to ITRF.
-       #Hence transpose in following:
-       JonesDipMat=LeffXY*bisectRot * stnRot.T * polz2cart;
-       #JonesDipMat=LeffXY*bisectRot * local_crd
+       if dipRespON:
+         #Compute & apply dipole response. This is the default.
+         #Assumption is that stnRot matrix goes from station coord to ITRF.
+         #Hence transpose in following:
+         JonesDipMat=LeffXY*bisectRot * stnRot.T * polz2cart;
+         #JonesDipMat=LeffXY*bisectRot * local_crd
+       else:
+         #Do not apply dipole response. This is primarily for testing the effect
+         #of the dipole response.
+         JonesDipMat=np.matrix([[1, 0],[0, 1]])
        if doPolPrec:
           #With precession:
           JonesDipMat=JonesDipMat * precMat
