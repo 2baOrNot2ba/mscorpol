@@ -228,7 +228,7 @@ def testJonesByAntFld():
    stepTime=timedelta(minutes=5)
    td=endTime-beginTime
    Times=[]
-   for ti in range(0,td.seconds/stepTime.seconds):
+   for ti in range(0,int(td.total_seconds())/stepTime.seconds):
        Times.append( (quantity((beginTime+ti*stepTime).isoformat())).get_value() )
        #obsTimes.append(beginTime+ti*stepTime)
    obsTimes=quantity(Times,'d') 
