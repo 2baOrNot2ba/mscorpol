@@ -275,7 +275,7 @@ if __name__ == "__main__":
           printJones(stnName,bTime,duration,stepTime,ra,dec,freqs,model)
    elif len(args) == 7:
       stnName,bTime,duration,stepTime,ra,dec=args2inpparms(args)
-      freqs=[args[6]]
+      freqs=[float(args[6])]
       printJones(stnName,bTime,duration,stepTime,ra,dec,freqs,model)
    else :
       opt.error("incorrect number of arguments")
