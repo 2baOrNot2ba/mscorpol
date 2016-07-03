@@ -1,4 +1,6 @@
 #!/usr/bin/python
+import matplotlib.pyplot as plt
+import matplotlib.dates
 import optparse
 import numpy as np
 from scipy import *
@@ -239,6 +241,32 @@ def printJones(stnName,bTime,duration,stepTime,ra,dec,freqs,model):
         for ti in range(0,duration.seconds/stepTime.seconds):
           print freq, quantity(obsTimes.get_value()[ti],obsTimes.get_unit()).formatted("YMD"), Jn[ti,0,0], Jn[ti,0,1],Jn[ti,1,0],Jn[ti,1,1]
 
+def plotJones(stnName,bTime,duration,stepTime,ra,dec,freqs,model):
+    #frequencys=np.linspace(0,100e6,512)
+    #freqs=frequencys[150:350]
+    eTime = bTime+duration
+    Times=[]
+    print duration
+    for ti in range(0,duration.seconds/stepTime.seconds):
+        Times.append( (quantity((bTime+ti*stepTime).isoformat())).get_value() )
+    obsTimes=quantity(Times,'d')
+    srcDir=measures().direction('J2000', ra,dec)
+    freq=freqs[0]
+    Jn=getJonesByAntFld(model,obsTimes,stnName,srcDir,freq)
+    p_ch = np.abs(Jn[:,0,0].squeeze())**2+np.abs(Jn[:,0,1].squeeze())**2
+    q_ch = np.abs(Jn[:,1,1].squeeze())**2+np.abs(Jn[:,1,0].squeeze())**2
+    plt.figure()
+    plt.subplot(211)
+    plt.plot(np.asarray(Times), 10*np.log10(p_ch))
+    plt.title('p channel')
+    #plt.clim(-9, -3)
+    plt.subplot(212)
+    plt.plot(np.asarray(Times), 10*np.log10(q_ch))
+    plt.title('q-channel')
+    #plt.clim(-9, -3)
+    plt.xlabel('Time')
+    plt.show()
+
 def args2inpparms(args):
     stnName=args[0]
     bTime = datetime.strptime(args[1], "%Y-%m-%d %H:%M:%S")
@@ -277,5 +305,6 @@ if __name__ == "__main__":
       stnName,bTime,duration,stepTime,ra,dec=args2inpparms(args)
       freqs=[float(args[6])]
       printJones(stnName,bTime,duration,stepTime,ra,dec,freqs,model)
+      #plotJones(stnName,bTime,duration,stepTime,ra,dec,freqs,model)
    else :
       opt.error("incorrect number of arguments")
