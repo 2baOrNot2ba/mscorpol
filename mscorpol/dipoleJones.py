@@ -1,4 +1,3 @@
-#!/usr/bin/python
 import optparse
 import numpy as np
 from scipy import *
