@@ -14,7 +14,7 @@ import parseParset
 import dipoleJones
 import HamakerJones
 
-__version__="1.0"
+__version__="1.1"
 
 bisectRot = np.matrix([[-1/sqrt(2), -1/sqrt(2), 0],
                        [ 1/sqrt(2), -1/sqrt(2), 0],
@@ -225,43 +225,36 @@ def getJonesByAntFld(model,obsTimes,stnName,srcDirection,freq=75.0E6):
          error("Unknown antenna model (choose from 'dipole','Hamaker')")
 
 
-def printJones(stnName,bTime,duration,stepTime,ra,dec,freqs,model):
-      eTime = bTime+duration
-      Times=[]
-      for ti in range(0,duration.seconds/stepTime.seconds):
-          Times.append( (quantity((bTime+ti*stepTime).isoformat())).get_value() )
-          #obsTimes.append(beginTime+ti*stepTime)
-      obsTimes=quantity(Times,'d')
-      srcDir=measures().direction('J2000', ra,dec)
-      print "Frequency","Time","J00","J01","J10","J11"
-      for freq in freqs:
+def printJones(stnName,obsTimes,srcDir,freqs,model):
+    print "Frequency","Time","J00","J01","J10","J11"
+    for freq in freqs:
         Jn=getJonesByAntFld(model,obsTimes,stnName,srcDir,freq)
-
         #plotJonesGnuplot(quantity(obsTimes.get_value()[0],obsTimes.get_unit()).formatted("YMD"),stepTime.seconds,Jn)
-        for ti in range(0,duration.seconds/stepTime.seconds):
-          print freq, quantity(obsTimes.get_value()[ti],obsTimes.get_unit()).formatted("YMD"), Jn[ti,0,0], Jn[ti,0,1],Jn[ti,1,0],Jn[ti,1,1]
+        for ti in range(0,len(obsTimes.get_value() )):
+            print freq, quantity(obsTimes.get_value()[ti],obsTimes.get_unit()).formatted("YMD"), Jn[ti,0,0], Jn[ti,0,1],Jn[ti,1,0],Jn[ti,1,1]
 
-def plotJones(stnName,bTime,duration,stepTime,ra,dec,freqs,model):
+def plotJones(stnName,obsTimes,freqs):
     #frequencys=np.linspace(0,100e6,512)
     #freqs=frequencys[150:350]
-    eTime = bTime+duration
-    Times=[]
-    print duration
-    for ti in range(0,duration.seconds/stepTime.seconds):
-        Times.append( (quantity((bTime+ti*stepTime).isoformat())).get_value() )
-    obsTimes=quantity(Times,'d')
-    srcDir=measures().direction('J2000', ra,dec)
+    timespy=[datetime.fromtimestamp(quantity(t,'d').to_unix_time()) for t in obsTimes.get_value()]
     freq=freqs[0]
     Jn=getJonesByAntFld(model,obsTimes,stnName,srcDir,freq)
     p_ch = np.abs(Jn[:,0,0].squeeze())**2+np.abs(Jn[:,0,1].squeeze())**2
     q_ch = np.abs(Jn[:,1,1].squeeze())**2+np.abs(Jn[:,1,0].squeeze())**2
+    #For testing purposes:
+    #p_ch = np.real(Jn[:,0,1].squeeze())
+    #q_ch = np.real(Jn[:,0,1].squeeze())
+    #In dB:
+    p_ch = 10*np.log10(p_ch)
+    q_ch = 10*np.log10(q_ch)
+    
     plt.figure()
     plt.subplot(211)
-    plt.plot(np.asarray(Times), 10*np.log10(p_ch))
+    plt.plot(timespy, p_ch)
     plt.title('p channel')
     #plt.clim(-9, -3)
     plt.subplot(212)
-    plt.plot(np.asarray(Times), 10*np.log10(q_ch))
+    plt.plot(timespy, q_ch)
     plt.title('q-channel')
     #plt.clim(-9, -3)
     plt.xlabel('Time')
@@ -304,7 +297,13 @@ if __name__ == "__main__":
    elif len(args) == 7:
       stnName,bTime,duration,stepTime,ra,dec=args2inpparms(args)
       freqs=[float(args[6])]
-      printJones(stnName,bTime,duration,stepTime,ra,dec,freqs,model)
-      #plotJones(stnName,bTime,duration,stepTime,ra,dec,freqs,model)
+      eTime = bTime+duration
+      Times=[]
+      for ti in range(0,int(duration.total_seconds()/stepTime.seconds)):
+          Times.append( (quantity((bTime+ti*stepTime).isoformat())).get_value() )
+      obsTimes=quantity(Times,'d')
+      srcDir=measures().direction('J2000', ra,dec)
+      #plotJones(stnName,obsTimes,freqs)
+      printJones(stnName,obsTimes,srcDir,freqs,model)
    else :
       opt.error("incorrect number of arguments")
